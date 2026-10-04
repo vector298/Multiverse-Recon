@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0e17" />
+    <meta
+      name="description"
+      content="Multiverse Recon — a multiverse-themed location guessing game. Study an anomaly, pinpoint it on the Nexus Map, and stabilize the timeline."
+    />
+    <title>Multiverse Recon — Stabilize the Timeline</title>
+
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin />
+    <link rel="preconnect" href="https://commons.wikimedia.org" crossorigin />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="starfield" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◈</span>
+        <div class="brand-text">
+          <strong>Multiverse Recon</strong>
+          <small>TVA Timeline Stabilization Division</small>
+        </div>
+      </div>
+      <nav class="topbar-actions" aria-label="Help">
+        <button type="button" class="btn btn-ghost" id="tour-btn" title="Replay the walkthrough">
+          ? Walkthrough
+        </button>
+      </nav>
+    </header>
+
+    <main class="stage">
+      <!-- ================= START SCREEN ================= -->
+      <section id="screen-start" class="screen is-active" aria-labelledby="start-title">
+        <div class="hero">
+          <p class="eyebrow">Avengers: Doomsday · Reality Breach Protocol</p>
+          <h1 id="start-title">The multiverse is collapsing.</h1>
+          <p class="lede">
+            You are a TVA field agent. Each round drops you into a random anomaly
+            somewhere across the globe — and the multiverse. Study the visual feed,
+            pinpoint your coordinates on the <strong>Nexus Map</strong>, and lock in
+            your guess to stabilize the timeline. Five rounds. One Sacred Timeline.
+          </p>
+
+          <div class="setup card">
+            <div class="setup-row">
+              <label for="player-name">Agent designation</label>
+              <input
+                id="player-name"
+                type="text"
+                maxlength="20"
+                placeholder="e.g. Agent Mobius"
+                autocomplete="nickname"
+              />
+            </div>
+            <div class="setup-row">
+              <label for="difficulty-select">Reality density</label>
+              <select id="difficulty-select">
+                <option value="easy">Easy — hints, no timer</option>
+                <option value="medium" selected>Medium — 60s rounds</option>
+                <option value="hard">Hard — 30s, zoomed feed</option>
+              </select>
+              <p class="blurb" id="difficulty-blurb"></p>
+            </div>
+            <button type="button" class="btn btn-primary btn-lg" id="start-btn">
+              Begin Recon →
+            </button>
+          </div>
+        </div>
+
+        <aside class="card leaderboard">
+          <h2>Nexus Hall of Fame</h2>
+          <ol class="leaderboard-list" aria-live="polite"></ol>
+          <p class="muted" id="leaderboard-note"></p>
+        </aside>
+      </section>
+
+      <!-- ================= GAME SCREEN ================= -->
+      <section id="screen-game" class="screen" hidden aria-labelledby="game-title">
+        <h2 id="game-title" class="visually-hidden">Current anomaly</h2>
+
+        <div class="hud" role="status" aria-live="polite">
+          <div class="hud-item">
+            <span class="hud-label">Round</span>
+            <span class="hud-value" id="hud-round">1 / 5</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Score</span>
+            <span class="hud-value" id="hud-score">0</span>
+          </div>
+          <div class="hud-item hud-streak-wrap">
+            <span class="hud-value chip" id="hud-streak" hidden></span>
+          </div>
+          <div class="hud-item hud-timer-wrap" id="hud-timer-wrap">
+            <span class="hud-label">Time</span>
+            <span class="hud-value" id="hud-timer">∞</span>
+          </div>
+        </div>
+
+        <div class="play-grid">
+          <!-- Location Viewer (Task 1.1) -->
+          <div class="viewer card" role="img" aria-label="Anomaly visual feed">
+            <div class="viewer-frame">
+              <img class="viewer-photo" alt="Anomaly location" hidden />
+              <div class="viewer-fallback" hidden></div>
+              <div class="viewer-scanline" aria-hidden="true"></div>
+            </div>
+            <div class="viewer-bar">
+              <span class="viewer-credit"></span>
+              <div class="hint-wrap" id="hint-wrap" hidden>
+                <button type="button" class="btn btn-ghost btn-sm" id="hint-btn">
+                  💡 Reveal temporal hint
+                </button>
+                <p class="hint-text" id="hint-text" hidden></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nexus Map (Task 1.2) -->
+          <div class="map-panel card">
+            <div class="map-head">
+              <h3>Nexus Map</h3>
+              <p class="muted">Click to drop your guess · drag the marker to adjust</p>
+            </div>
+            <div id="nexus-map" class="map"></div>
+            <button type="button" class="btn btn-primary" id="lock-btn" disabled>
+              Lock convergence 🔒
+            </button>
+          </div>
+        </div>
+
+        <!-- Round result overlay -->
+        <div id="round-result" class="round-result" role="dialog" aria-modal="true" aria-labelledby="rr-name" hidden>
+          <div class="round-result-card card">
+            <p class="rr-points" id="rr-points">+0</p>
+            <p class="rr-multiplier chip" id="rr-multiplier" hidden></p>
+            <p class="rr-rating" id="rr-rating"></p>
+            <h3 class="rr-name" id="rr-name"></h3>
+            <p class="rr-country" id="rr-country"></p>
+            <p class="rr-distance" id="rr-distance"></p>
+            <p class="rr-fact" id="rr-fact"></p>
+            <button type="button" class="btn btn-primary btn-lg" id="next-btn">Next anomaly</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RESULTS SCREEN ================= -->
+      <section id="screen-results" class="screen" hidden aria-labelledby="results-title">
+        <div class="results-head">
+          <p class="eyebrow">Final TVA Assessment · <span id="final-difficulty"></span> mode</p>
+          <h2 id="results-title">
+            <span id="final-score">0</span>
+            <small>/ <span id="final-max">25,000</span></small>
+          </h2>
+          <p class="lede" id="final-verdict"></p>
+          <button type="button" class="btn btn-primary btn-lg" id="play-again">↻ Play again</button>
+        </div>
+
+        <div class="results-grid">
+          <div class="card">
+            <h3>Convergence map</h3>
+            <div id="results-map" class="map map-tall"></div>
+            <p class="muted">⌖ actual location · numbered pin = your guess</p>
+          </div>
+
+          <div class="card">
+            <h3>Round breakdown</h3>
+            <ol class="round-summary" id="round-summary"></ol>
+
+            <div class="save-score">
+              <label for="save-name">Log your run</label>
+              <div class="save-row">
+                <input id="save-name" type="text" maxlength="20" placeholder="Agent designation" />
+                <button type="button" class="btn btn-primary" id="save-btn">Submit score</button>
+              </div>
+              <p class="muted" id="save-status" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <aside class="card leaderboard">
+            <h3>Nexus Hall of Fame</h3>
+            <ol class="leaderboard-list" aria-live="polite"></ol>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Great-circle distances via the Haversine formula · Map © OpenStreetMap contributors</span>
+    </footer>
+
+    <!-- Vendored library (no CDN dependency) -->
+    <script src="vendor/leaflet/leaflet.js"></script>
+
+    <!-- Game modules -->
+    <script src="js/config.js"></script>
+    <script src="js/locations.js"></script>
+    <script src="js/geo.js"></script>
+    <script src="js/scoring.js"></script>
+    <script src="js/viewer.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/leaderboard.js"></script>
+    <script src="js/tour.js"></script>
+    <script src="js/game.js"></script>
+  </body>
+</html>
